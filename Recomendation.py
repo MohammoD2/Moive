@@ -1,43 +1,50 @@
 import streamlit as st
 import pandas as pd
-import pickle
-import requests 
+import requests
 import joblib
-st.title('Welcome To Ibrahim Creation ')
-st.header('Creator- Mohammod Ibrahim Hossain ')
-# st.image('My profressional photos.jpg',caption="Creator")
+
+# Load configuration from the dictionary
+title = app_config["title"]
+creator = app_config["creator"]
+model_path = app_config["model_path"]
+similarity_path = app_config["similarity_path"]
+poster_api_key = app_config["poster_api_key"]
+poster_base_url = app_config["poster_base_url"]
+poster_image_url = app_config["poster_image_url"]
+num_recommendations = app_config["num_recommendations"]
+
+st.title(title)
+st.header(f"Creator- {creator}")
+
 def fetch_poster(movie_id):
-    url = "https://api.themoviedb.org/3/movie/{}?api_key=8265bd1679663a7ea12ac168da84d2e8&language=en-US".format(movie_id)
-    data = requests.get(url)
-    data = data.json()
+    url = poster_base_url.format(movie_id, poster_api_key)
+    data = requests.get(url).json()
     poster_path = data['poster_path']
-    full_path = "https://image.tmdb.org/t/p/w500/" + poster_path
+    full_path = poster_image_url.format(poster_path)
     return full_path
-def recomnetion(movie):
-    movies_index = moives[moives['title'] == movie].index[0]
-    distance = similarity[movies_index]
-    movies_list = sorted(list(enumerate(distance)), reverse=True, key=lambda x: x[1])[1:6]
-    movie_titles = [] 
+
+def recommendation(movie):
+    movies_index = movies_df[movies_df['title'] == movie].index[0]
+    distance = similarity_matrix[movies_index]
+    movies_list = sorted(list(enumerate(distance)), reverse=True, key=lambda x: x[1])[1:num_recommendations + 1]
+    movie_titles = []
     recommended_movie_posters = []
+
     for i in movies_list:
-        movie_id = moives.iloc[i[0]].movie_id
-
+        movie_id = movies_df.iloc[i[0]].movie_id
         recommended_movie_posters.append(fetch_poster(movie_id))
-        movie_titles.append(moives.iloc[i[0]].title)  # Append to movie_titles list
-    return recommended_movie_posters ,movie_titles
-st.title("Movie Recommendation System")
-model_path="/mount/src/movie/Movie_dict1.pkl"
-movies_dict = joblib.load(model_path)
-moives = pd.DataFrame(movies_dict)
+        movie_titles.append(movies_df.iloc[i[0]].title)
 
-similarity_t = "/mount/src/Movie/similarity1.pkl"
-similarity =joblib.load(similarity_t)
-selected_movie_name = st.selectbox(
-    'Select a movie:',
-    moives['title'].values)
+    return recommended_movie_posters, movie_titles
+
+# Load data and model
+movies_df = pd.DataFrame(joblib.load(model_path))
+similarity_matrix = joblib.load(similarity_path)
+
+selected_movie_name = st.selectbox('Select a movie:', movies_df['title'].values)
 
 if st.button('Show Recommendations'):
-    recommended_movie_posters, recommended_movie_titles = recomnetion(selected_movie_name)
+    recommended_movie_posters, recommended_movie_titles = recommendation(selected_movie_name)
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
